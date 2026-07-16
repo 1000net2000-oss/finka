@@ -42,6 +42,7 @@ function yearRange(d) {
 
 // ===== Состояние =====
 let currentStatsPeriod = 'month';
+let drillRange = null; // {start, end, label} — выбранный конкретный отрезок на графике
 let currentHistoryFilter = 'all';
 let manualCategory = null;
 let lastAddedId = null;
@@ -175,10 +176,19 @@ function currentPeriodRange() {
 }
 
 function renderStats() {
-  const { start, end } = currentPeriodRange();
-  const entries = getEntriesByDateRange(start, end).filter(e => e.type === 'expense');
+  const range = drillRange || currentPeriodRange();
+  const entries = getEntriesByDateRange(range.start, range.end).filter(e => e.type === 'expense');
   const total = entries.reduce((s, e) => s + e.amount, 0);
   document.getElementById('statsTotal').textContent = formatMoney(total) + ' zł';
+  document.getElementById('statsDonutLabel').textContent = drillRange ? drillRange.label.toLowerCase() : 'потрачено';
+
+  const crumb = document.getElementById('drillCrumb');
+  if (drillRange) {
+    crumb.style.display = 'flex';
+    document.getElementById('drillLabel').textContent = drillRange.label;
+  } else {
+    crumb.style.display = 'none';
+  }
 
   const sums = {};
   entries.forEach(e => { sums[e.category] = (sums[e.category] || 0) + e.amount; });
@@ -213,47 +223,82 @@ function renderStats() {
         </div>`;
     }).join('');
     catList.querySelectorAll('.cat-row').forEach(row => {
-      row.addEventListener('click', () => openCategoryDetail(row.dataset.key));
+      row.addEventListener('click', () => openCategoryDetail(row.dataset.key, range));
     });
   }
 
-  renderTrend(entries, start, end);
+  // Тренд всегда строится по полному периоду (недрилленному), чтобы можно было выбрать другой отрезок
+  const fullRange = currentPeriodRange();
+  const fullEntries = getEntriesByDateRange(fullRange.start, fullRange.end).filter(e => e.type === 'expense');
+  renderTrend(fullEntries, fullRange.start, fullRange.end);
 }
+
+document.getElementById('drillBack').addEventListener('click', () => {
+  drillRange = null;
+  renderStats();
+});
 
 function renderTrend(entries, start, end) {
   const bars = document.getElementById('trendBars');
   const days = document.getElementById('trendDays');
-  let bins = []; let labels = [];
+  let bins = []; // {value, start, end, label}
 
   if (currentStatsPeriod === 'week') {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const iso = isoOf(d);
-      bins.push(entries.filter(e => e.date === iso).reduce((s, e) => s + e.amount, 0));
-      labels.push(d.toLocaleDateString('ru-RU', { weekday: 'short' }).slice(0, 2));
+      const value = entries.filter(e => e.date === iso).reduce((s, e) => s + e.amount, 0);
+      const label = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      bins.push({ value, start: iso, end: iso, label });
     }
   } else if (currentStatsPeriod === 'year') {
+    const year = todayDate().getFullYear();
+    const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
     for (let m = 0; m < 12; m++) {
-      const monthEntries = entries.filter(e => new Date(e.date + 'T00:00:00').getMonth() === m);
-      bins.push(monthEntries.reduce((s, e) => s + e.amount, 0));
-      labels.push(['Я','Ф','М','А','М','И','И','А','С','О','Н','Д'][m]);
+      const mStart = year + '-' + String(m + 1).padStart(2, '0') + '-01';
+      const lastDay = new Date(year, m + 1, 0).getDate();
+      const mEnd = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+      const value = entries.filter(e => e.date >= mStart && e.date <= mEnd).reduce((s, e) => s + e.amount, 0);
+      bins.push({ value, start: mStart, end: mEnd, label: monthNames[m] });
     }
   } else {
-    for (let w = 0; w < 5; w++) {
-      const wStart = w * 7 + 1, wEnd = Math.min(w * 7 + 7, 31);
-      const weekEntries = entries.filter(e => {
-        const day = parseInt(e.date.split('-')[2], 10);
-        return day >= wStart && day <= wEnd;
-      });
-      if (w > 0 && wStart > new Date(end).getDate()) continue;
-      bins.push(weekEntries.reduce((s, e) => s + e.amount, 0));
-      labels.push((w + 1) + 'н');
+    const monthD = todayDate();
+    const lastDay = new Date(monthD.getFullYear(), monthD.getMonth() + 1, 0).getDate();
+    for (let w = 0; w * 7 < lastDay; w++) {
+      const wStartDay = w * 7 + 1;
+      const wEndDay = Math.min(wStartDay + 6, lastDay);
+      const wStart = isoOf(monthD).slice(0, 8) + String(wStartDay).padStart(2, '0');
+      const wEnd = isoOf(monthD).slice(0, 8) + String(wEndDay).padStart(2, '0');
+      const value = entries.filter(e => e.date >= wStart && e.date <= wEnd).reduce((s, e) => s + e.amount, 0);
+      bins.push({ value, start: wStart, end: wEnd, label: `Неделя ${w + 1} (${wStartDay}–${wEndDay})` });
     }
   }
 
-  const max = Math.max(...bins, 1);
-  bars.innerHTML = bins.map(v => `<div class="trend-bar${v === max && v > 0 ? ' peak' : ''}" style="height:${Math.max((v / max) * 100, 3)}%"></div>`).join('');
-  days.innerHTML = labels.map(l => `<span>${l}</span>`).join('');
+  const short = currentStatsPeriod === 'week'
+    ? bins.map(b => new Date(b.start + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'short' }).slice(0, 2))
+    : currentStatsPeriod === 'year'
+      ? ['Я','Ф','М','А','М','И','И','А','С','О','Н','Д']
+      : bins.map((_, i) => (i + 1) + 'н');
+
+  const max = Math.max(...bins.map(b => b.value), 1);
+  bars.innerHTML = bins.map((b, i) => {
+    const isSelected = drillRange && drillRange.start === b.start && drillRange.end === b.end;
+    const cls = isSelected ? ' selected' : (b.value === max && b.value > 0 ? ' peak' : '');
+    return `<div class="trend-bar${cls}" style="height:${Math.max((b.value / max) * 100, 3)}%" data-i="${i}"></div>`;
+  }).join('');
+  days.innerHTML = short.map(l => `<span>${l}</span>`).join('');
+
+  bars.querySelectorAll('.trend-bar').forEach(el => {
+    el.addEventListener('click', () => {
+      const bin = bins[parseInt(el.dataset.i, 10)];
+      if (drillRange && drillRange.start === bin.start && drillRange.end === bin.end) {
+        drillRange = null; // повторный тап по тому же бару — сброс
+      } else {
+        drillRange = { start: bin.start, end: bin.end, label: bin.label };
+      }
+      renderStats();
+    });
+  });
 }
 
 document.getElementById('statsPeriodTabs').addEventListener('click', (e) => {
@@ -262,13 +307,14 @@ document.getElementById('statsPeriodTabs').addEventListener('click', (e) => {
   document.querySelectorAll('#statsPeriodTabs .period-tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
   currentStatsPeriod = tab.dataset.period;
+  drillRange = null;
   renderStats();
 });
 
 // ===== Детали категории =====
-function openCategoryDetail(key) {
+function openCategoryDetail(key, range) {
   const cat = CATEGORIES[key];
-  const { start, end } = currentPeriodRange();
+  const { start, end } = range || currentPeriodRange();
   const entries = getEntriesByDateRange(start, end).filter(e => e.category === key && e.type === 'expense')
     .sort((a, b) => b.date.localeCompare(a.date));
   const total = entries.reduce((s, e) => s + e.amount, 0);
@@ -277,7 +323,7 @@ function openCategoryDetail(key) {
   document.getElementById('catDetailName').textContent = cat.name;
   document.getElementById('catDetailAmount').textContent = formatMoney(total) + ' zł';
   document.getElementById('catTotalCircle').style.borderColor = cat.color;
-  const periodLabel = { week: 'за неделю', month: 'за месяц', year: 'за год' }[currentStatsPeriod];
+  const periodLabel = drillRange ? drillRange.label.toLowerCase() : { week: 'за неделю', month: 'за месяц', year: 'за год' }[currentStatsPeriod];
   document.getElementById('catDetailPeriod').textContent = periodLabel;
 
   const list = document.getElementById('catDetailList');

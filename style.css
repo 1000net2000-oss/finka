@@ -1,7 +1,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
 
   :root{
-    --paper: #F6F4EF;
+    --paper: #F1ECE0;
     --paper-line: #E4E0D6;
     --ink: #23241F;
     --ink-soft: #6B6A62;
@@ -29,12 +29,7 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background:
-      repeating-linear-gradient(
-        to bottom,
-        transparent, transparent 39px,
-        var(--paper-line) 39px, var(--paper-line) 40px
-      );
+    background: var(--paper);
     position: relative;
   }
 
@@ -596,3 +591,17 @@
   color: var(--rust);
   border: 1px solid var(--paper-line);
 }
+
+.drill-crumb{
+  display:flex;
+  align-items:center;
+  gap: 6px;
+  padding: 6px 16px 0;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.drill-crumb .back-btn{ font-size: 18px; padding: 0; }
+.trend-bar{ cursor: pointer; }
+.trend-bar.selected{ opacity: 1; background: var(--gold); }

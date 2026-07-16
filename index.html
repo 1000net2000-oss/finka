@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#F6F4EF">
+<meta name="theme-color" content="#F1ECE0">
 <title>Учёт</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -66,11 +66,16 @@
       <div class="period-tab" data-period="year">Год</div>
     </div>
 
+    <div class="drill-crumb" id="drillCrumb" style="display:none;">
+      <span class="back-btn" id="drillBack">‹</span>
+      <span id="drillLabel"></span>
+    </div>
+
     <div class="donut-wrap">
       <div class="donut" id="statsDonut">
         <div class="donut-center">
           <div class="donut-total" id="statsTotal">0 zł</div>
-          <div class="donut-label">потрачено</div>
+          <div class="donut-label" id="statsDonutLabel">потрачено</div>
         </div>
       </div>
     </div>
