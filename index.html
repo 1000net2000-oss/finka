@@ -88,6 +88,61 @@
       <div class="trend-days" id="trendDays"></div>
     </div>
 
+    <div class="analytics-link" id="openAnalytics">
+      <span>Углублённая аналитика</span>
+      <span class="cat-arrow">›</span>
+    </div>
+
+  </div>
+
+  <!-- АНАЛИТИКА -->
+  <div class="view" id="view-analytics">
+
+    <div class="screen-header cat-detail-header">
+      <span class="back-btn" id="backFromAnalytics">‹</span>
+      <div class="cat-detail-title">Аналитика</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title" id="compareTitle">Этот месяц vs прошлый</div>
+      <div class="compare-card">
+        <div class="compare-row">
+          <span class="compare-month" id="compareCurrMonth">Июль</span>
+          <span class="compare-amount" id="compareCurrAmount">0 zł</span>
+        </div>
+        <div class="compare-bars">
+          <div class="compare-bar-row">
+            <span class="compare-bar-label" id="comparePrevLabel">—</span>
+            <div class="compare-bar-track"><div class="compare-bar-fill prev" id="comparePrevFill" style="width:0%"></div></div>
+            <span class="compare-bar-val" id="comparePrevVal">0 zł</span>
+          </div>
+          <div class="compare-bar-row">
+            <span class="compare-bar-label" id="compareCurrLabel">—</span>
+            <div class="compare-bar-track"><div class="compare-bar-fill curr" id="compareCurrFill" style="width:0%"></div></div>
+            <span class="compare-bar-val" id="compareCurrVal">0 zł</span>
+          </div>
+        </div>
+        <div class="diff-badge" id="diffBadge"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Средний чек по категориям</div>
+      <div class="avg-list" id="avgList"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Прогноз до конца месяца</div>
+      <div class="forecast-card">
+        <div class="forecast-label">Ожидаемые траты за месяц</div>
+        <div class="forecast-amount" id="forecastAmount">≈ 0 zł</div>
+        <div class="forecast-note" id="forecastNote"></div>
+        <div class="forecast-progress"><div class="forecast-progress-fill" id="forecastProgress" style="width:0%"></div></div>
+        <div class="forecast-days"><span id="forecastDaysLabel">День 0 из 0</span><span id="forecastPct">0%</span></div>
+      </div>
+      <div class="empty-note">Прогноз строится по среднему темпу трат за текущий месяц. Чем больше записей — тем точнее.</div>
+    </div>
+
   </div>
 
   <!-- ДЕТАЛИ КАТЕГОРИИ -->

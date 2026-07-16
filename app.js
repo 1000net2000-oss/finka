@@ -340,6 +340,110 @@ function openCategoryDetail(key, range) {
 }
 document.getElementById('backFromCat').addEventListener('click', () => switchView('view-stats'));
 
+// ===== Аналитика =====
+const MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+function renderAnalytics() {
+  const today = todayDate();
+
+  // --- Сравнение месяцев ---
+  const { start: currStart, end: currEnd } = monthRange(today);
+  const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const { start: prevStart, end: prevEnd } = monthRange(prevMonthDate);
+
+  const currEntries = getEntriesByDateRange(currStart, currEnd).filter(e => e.type === 'expense');
+  const prevEntries = getEntriesByDateRange(prevStart, prevEnd).filter(e => e.type === 'expense');
+  const currTotal = currEntries.reduce((s, e) => s + e.amount, 0);
+  const prevTotal = prevEntries.reduce((s, e) => s + e.amount, 0);
+
+  document.getElementById('compareCurrMonth').textContent = MONTH_NAMES_RU[today.getMonth()];
+  document.getElementById('compareCurrAmount').textContent = formatMoney(currTotal) + ' zł';
+  document.getElementById('comparePrevLabel').textContent = MONTH_NAMES_RU[prevMonthDate.getMonth()].slice(0, 3);
+  document.getElementById('compareCurrLabel').textContent = MONTH_NAMES_RU[today.getMonth()].slice(0, 3);
+  document.getElementById('comparePrevVal').textContent = formatMoney(prevTotal) + ' zł';
+  document.getElementById('compareCurrVal').textContent = formatMoney(currTotal) + ' zł';
+
+  const maxTotal = Math.max(currTotal, prevTotal, 1);
+  document.getElementById('comparePrevFill').style.width = (prevTotal / maxTotal * 100) + '%';
+  document.getElementById('compareCurrFill').style.width = (currTotal / maxTotal * 100) + '%';
+
+  const badge = document.getElementById('diffBadge');
+  if (prevTotal === 0) {
+    badge.className = 'diff-badge flat';
+    badge.textContent = 'Нет данных за прошлый месяц';
+  } else {
+    const diffPct = Math.round(((currTotal - prevTotal) / prevTotal) * 100);
+    if (diffPct > 0) {
+      badge.className = 'diff-badge up';
+      badge.textContent = `▲ +${diffPct}% к прошлому месяцу`;
+    } else if (diffPct < 0) {
+      badge.className = 'diff-badge down';
+      badge.textContent = `▼ ${diffPct}% к прошлому месяцу`;
+    } else {
+      badge.className = 'diff-badge flat';
+      badge.textContent = 'Без изменений к прошлому месяцу';
+    }
+  }
+
+  // --- Средний чек по категориям ---
+  const byCategory = {};
+  currEntries.forEach(e => {
+    if (!byCategory[e.category]) byCategory[e.category] = { sum: 0, count: 0 };
+    byCategory[e.category].sum += e.amount;
+    byCategory[e.category].count += 1;
+  });
+  const avgList = document.getElementById('avgList');
+  const avgEntries = Object.entries(byCategory).sort((a, b) => b[1].sum - a[1].sum);
+  if (!avgEntries.length) {
+    avgList.innerHTML = '<div class="empty-state">Нет записей в этом месяце</div>';
+  } else {
+    avgList.innerHTML = avgEntries.map(([key, d]) => {
+      const cat = CATEGORIES[key];
+      const avg = d.sum / d.count;
+      return `
+        <div class="avg-row">
+          <div class="avg-left">
+            <span class="avg-icon">${cat.icon}</span>
+            <div><div class="avg-name">${cat.name}</div><div class="avg-count">${d.count} ${pluralize(d.count, 'покупка', 'покупки', 'покупок')}</div></div>
+          </div>
+          <div class="avg-right">
+            <div class="avg-value">${formatMoney(avg)} zł</div>
+            <div class="avg-sub">в среднем</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // --- Прогноз до конца месяца ---
+  const dayOfMonth = today.getDate();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const dailyAvg = dayOfMonth > 0 ? currTotal / dayOfMonth : 0;
+  const projected = dailyAvg * daysInMonth;
+  const remaining = Math.max(projected - currTotal, 0);
+  const pctElapsed = Math.round((dayOfMonth / daysInMonth) * 100);
+
+  document.getElementById('forecastAmount').textContent = currEntries.length ? '≈ ' + formatMoney(projected) + ' zł' : '— ';
+  document.getElementById('forecastNote').textContent = currEntries.length
+    ? `При текущем темпе трат за оставшиеся ${daysInMonth - dayOfMonth} дн. потратишь ещё около ${formatMoney(remaining)} zł`
+    : 'Добавь записи за этот месяц, чтобы увидеть прогноз';
+  document.getElementById('forecastProgress').style.width = pctElapsed + '%';
+  document.getElementById('forecastDaysLabel').textContent = `День ${dayOfMonth} из ${daysInMonth}`;
+  document.getElementById('forecastPct').textContent = pctElapsed + '%';
+}
+
+function pluralize(n, one, few, many) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+document.getElementById('openAnalytics').addEventListener('click', () => {
+  renderAnalytics();
+  switchView('view-analytics');
+});
+document.getElementById('backFromAnalytics').addEventListener('click', () => switchView('view-stats'));
+
 // ===== История =====
 function renderHistoryFilters() {
   const el = document.getElementById('historyFilters');
