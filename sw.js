@@ -1,4 +1,4 @@
-const CACHE = 'uchet-v8';
+const CACHE = 'uchet-v9';
 const ASSETS = [
   './',
   './index.html',
